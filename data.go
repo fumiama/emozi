@@ -7,10 +7,11 @@ import (
 
 // 字数据库 数据来自 https://github.com/shuowenjiezi/shuowen
 //
-//var 字数据库 []byte
+//go:embed 字.db
+var 字数据库 []byte
 
 // DatabasePath 字数据库的路径 如找不到会向对应路径写入内嵌的字数据库
-var EmoziDatabasePath = "字.db"
+var EmoziDatabasePath = "字a.db"
 
 const (
 	主字表名 = "emozi"
@@ -30,7 +31,7 @@ type 字表 struct {
 	F  string
 }
 
-func 颜表ID(w rune, s 声母枚举, y 韵母枚举, t 声调枚举) int64 {
+func 字表ID(w rune, s 声母枚举, y 韵母枚举, t 声调枚举) int64 {
 	return int64((uint64(w) << 32) | (uint64(s) << 16) | (uint64(y) << 8) | (uint64(t)))
 }
 

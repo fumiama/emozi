@@ -2,6 +2,7 @@ package emozi
 
 import (
 	"errors"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,12 @@ type Coder struct {
 
 // NewCoder israndom 随机挑选声母韵母的颜文字, 否则固定使用第一个
 func NewCoder(israndom bool, cachettl time.Duration) (c Coder, err error) {
+	if _, err = os.Stat(EmoziDatabasePath); err != nil {
+		err = os.WriteFile(EmoziDatabasePath, 字数据库, 0644)
+		if err != nil {
+			return
+		}
+	}
 	c.db.DBPath = EmoziDatabasePath
 	c.字表缓存 = make(map[rune][]字表, 4096)
 	c.部首缓存 = make(map[rune]string, 4096)
@@ -110,7 +117,7 @@ func (c *Coder) Add(w, r, p, f string) error {
 	}
 	c.mu.Lock()
 	err = c.db.InsertUnique(主字表名, &字表{
-		ID: 颜表ID(rw, s, y, t),
+		ID: 字表ID(rw, s, y, t),
 		W:  rw, S: s, Y: y, T: t,
 		R: rr, P: p, F: f,
 	})
@@ -138,7 +145,7 @@ func (c *Coder) Overlay(w, r, p, f string) error {
 func (c *Coder) overlay(w, p, f string, s 声母枚举, y 韵母枚举, t 声调枚举, rw rune, rr rune) error {
 	c.mu.Lock()
 	err := c.db.InsertUnique(附字表名, &字表{
-		ID: 颜表ID(rw, s, y, t),
+		ID: 字表ID(rw, s, y, t),
 		W:  rw, S: s, Y: y, T: t,
 		R: rr, P: p, F: f,
 	})
@@ -160,7 +167,7 @@ func (c *Coder) ChangeOverlay(oldw, oldr, oldf, neww, newr, newf string) error {
 	if err != nil {
 		return err
 	}
-	q := "WHERE ID=" + strconv.FormatInt(颜表ID(rw, s, y, t), 10)
+	q := "WHERE ID=" + strconv.FormatInt(字表ID(rw, s, y, t), 10)
 	x := 字表{}
 	c.mu.RLock()
 	err = c.db.Find(附字表名, &x, q)
@@ -178,6 +185,23 @@ func (c *Coder) ChangeOverlay(oldw, oldr, oldf, neww, newr, newf string) error {
 		return err
 	}
 	return c.overlay(neww, newp, newf, ns, ny, nt, nrw, nrr)
+}
+
+// Stabilize 将附加库中的一项固定到主库
+func (c *Coder) Stabilize(id int64) error {
+	x := 字表{}
+	q := "WHERE ID=" + strconv.FormatInt(id, 10)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	err := c.db.Find(附字表名, &x, q)
+	if err != nil {
+		return err
+	}
+	err = c.db.Insert(主字表名, &x)
+	if err != nil {
+		return err
+	}
+	return c.db.Del(附字表名, q)
 }
 
 // OverlayRadical 添加一个部首
