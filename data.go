@@ -1,6 +1,9 @@
 package emozi
 
-import _ "embed"
+import (
+	_ "embed"
+	"strconv"
+)
 
 // 字数据库 数据来自 https://github.com/shuowenjiezi/shuowen
 //
@@ -29,6 +32,35 @@ type 字表 struct {
 
 func 颜表ID(w rune, s 声母枚举, y 韵母枚举, t 声调枚举) int64 {
 	return int64((uint64(w) << 32) | (uint64(s) << 16) | (uint64(y) << 8) | (uint64(t)))
+}
+
+// 查字 返回 lst lstbuf error
+func (c *Coder) 查字(ch rune, lstbuf []字表) ([]字表, []字表, error) {
+	c.mu.RLock()
+	lst, ok := c.字表缓存[ch]
+	c.mu.RUnlock()
+	if ok {
+		return lst, lstbuf, nil
+	}
+	lstbuf = lstbuf[:0]
+	x := 字表{}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	err := c.db.FindFor(附字表名, &x, "WHERE W="+strconv.Itoa(int(ch)), func() error {
+		lstbuf = append(lstbuf, x)
+		return nil
+	})
+	if err != nil {
+		lstbuf = lstbuf[:0]
+		err = c.db.FindFor(主字表名, &x, "WHERE W="+strconv.Itoa(int(ch)), func() error {
+			lstbuf = append(lstbuf, x)
+			return nil
+		})
+	}
+	lstsave := make([]字表, len(lstbuf))
+	copy(lstsave, lstbuf)
+	c.字表缓存[ch] = lstsave
+	return lstbuf, lstbuf, err
 }
 
 // 从表 从部首表
