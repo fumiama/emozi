@@ -104,10 +104,10 @@ func (c *Coder) Encode(s string, selections ...int) (EmoziString, []int, error) 
 	return WrapRawEmoziString(sb.String()), 多音字数表, nil
 }
 
-// Add 向主库添加一个新字
+// AddChar 向主库添加一个新字
 //
 // w: 字, r: 部首, p: 不带声调的拼音(可空), f: 带声调的拼音
-func (c *Coder) Add(w, r, p, f string) error {
+func (c *Coder) AddChar(w, r, p, f string) error {
 	if p == "" {
 		p = 去调(f)
 	}
@@ -128,10 +128,10 @@ func (c *Coder) Add(w, r, p, f string) error {
 	return nil
 }
 
-// Overlay 向附加库添加一个新字, 覆盖在主库之上
+// AddCharOverlay 向附加库添加一个新字, 覆盖在主库之上
 //
 // w: 字, r: 部首, p: 不带声调的拼音(可空), f: 带声调的拼音
-func (c *Coder) Overlay(w, r, p, f string) error {
+func (c *Coder) AddCharOverlay(w, r, p, f string) error {
 	if p == "" {
 		p = 去调(f)
 	}
@@ -139,10 +139,10 @@ func (c *Coder) Overlay(w, r, p, f string) error {
 	if err != nil {
 		return err
 	}
-	return c.overlay(w, p, f, s, y, t, rw, rr)
+	return c.addcharoverlay(w, p, f, s, y, t, rw, rr)
 }
 
-func (c *Coder) overlay(w, p, f string, s 声母枚举, y 韵母枚举, t 声调枚举, rw rune, rr rune) error {
+func (c *Coder) addcharoverlay(w, p, f string, s 声母枚举, y 韵母枚举, t 声调枚举, rw rune, rr rune) error {
 	c.mu.Lock()
 	err := c.db.InsertUnique(附字表名, &字表{
 		ID: 字表ID(rw, s, y, t),
@@ -156,8 +156,8 @@ func (c *Coder) overlay(w, p, f string, s 声母枚举, y 韵母枚举, t 声调
 	return nil
 }
 
-// ChangeOverlay 更改附加库的一项
-func (c *Coder) ChangeOverlay(oldw, oldr, oldf, neww, newr, newf string) error {
+// ChangeCharOverlay 更改附加库的一项
+func (c *Coder) ChangeCharOverlay(oldw, oldr, oldf, neww, newr, newf string) error {
 	s, y, t, rw, rr, err := 拆音识字(oldw, oldr, 去调(oldf), oldf)
 	if err != nil {
 		return err
@@ -184,11 +184,11 @@ func (c *Coder) ChangeOverlay(oldw, oldr, oldf, neww, newr, newf string) error {
 	if err != nil {
 		return err
 	}
-	return c.overlay(neww, newp, newf, ns, ny, nt, nrw, nrr)
+	return c.addcharoverlay(neww, newp, newf, ns, ny, nt, nrw, nrr)
 }
 
-// Stabilize 将附加库中的一项固定到主库
-func (c *Coder) Stabilize(id int64) error {
+// StabilizeCharFromOverlay 将附加库中的一项固定到主库
+func (c *Coder) StabilizeCharFromOverlay(id int64) error {
 	x := 字表{}
 	q := "WHERE ID=" + strconv.FormatInt(id, 10)
 	c.mu.Lock()
@@ -204,9 +204,30 @@ func (c *Coder) Stabilize(id int64) error {
 	return c.db.Del(附字表名, q)
 }
 
-// OverlayRadical 添加一个部首
-func (c *Coder) OverlayRadical(r rune, e string) error {
+// DelChar 删除主库的一个字
+func (c *Coder) DelChar(id int64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.db.Del(主字表名, "WHERE ID="+strconv.FormatInt(id, 10))
+}
+
+// DelCharOverlay 删除附加库的一个字
+func (c *Coder) DelCharOverlay(id int64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.db.Del(附字表名, "WHERE ID="+strconv.FormatInt(id, 10))
+}
+
+// AddRadicalOverlay 添加一个部首
+func (c *Coder) AddRadicalOverlay(r rune, e string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.db.InsertUnique(部首表名, &部首表{R: r, E: e})
+}
+
+// DelRadicalOverlay 删除一个部首
+func (c *Coder) DelRadicalOverlay(r rune) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.db.Del(部首表名, "WHERE R="+strconv.Itoa(int(r)))
 }

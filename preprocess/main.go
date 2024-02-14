@@ -49,12 +49,12 @@ func main() {
 			panic(fmt.Sprintf("ERROR: decoding data/%d.json: p: %s, f: %s", i, x.P, x.F))
 		}
 		insert := func(w string) error {
-			err = c.Add(w, x.R, x.P, x.F)
+			err = c.AddChar(w, x.R, x.P, x.F)
 			if err != nil {
 				return fmt.Errorf("inserting table emozi of data/%d.json: %v", i, err)
 			}
 			for _, a := range x.A {
-				err = c.Add(w, x.R, "", a)
+				err = c.AddChar(w, x.R, "", a)
 				if err != nil {
 					return fmt.Errorf("inserting table emozi of data/%d.json, alter %s: %v", i, a, err)
 				}
