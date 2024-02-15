@@ -19,7 +19,11 @@ type EmoziString string
 func WrapRawEmoziString(s string) EmoziString {
 	rs := []rune(s)
 	if len(rs) < 4 {
-		return ""
+		diff := 4 - len(rs)
+		for i := 0; i < diff; i++ {
+			rs = append(rs, 空)
+		}
+		s = string(rs)
 	}
 	h := crc32.NewIEEE()
 	h.Write(base14.StringToBytes(s))

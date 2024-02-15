@@ -6,12 +6,12 @@ import (
 	"strings"
 )
 
-var 空 = "🈳️"
+const 空 = '🈳'
 
 func 随机正查(m [][]string, isRandom bool, i uint8) string {
 	lst := m[i]
 	if len(lst) == 0 {
-		return 空
+		return string(空)
 	}
 	if len(lst) == 1 || !isRandom {
 		return lst[0]
@@ -42,7 +42,7 @@ func (c *Coder) 部首(r rune) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	err := c.db.Find(部首表名, x, "WHERE R="+strconv.Itoa(int(r)))
-	if err == nil && len(x.E) > 0 && x.E != 空 {
+	if err == nil && len(x.E) > 0 && x.E != string(空) {
 		c.部首缓存[r] = x.E
 		return x.E
 	}
@@ -50,8 +50,8 @@ func (c *Coder) 部首(r rune) string {
 		c.部首缓存[r] = e
 		return e
 	}
-	c.部首缓存[r] = 空
-	return 空
+	c.部首缓存[r] = string(空)
+	return string(空)
 }
 
 func 二阶逆查[E ~uint8](lowm map[rune][]string, m map[string]E, s string) (enum E, n int) {
@@ -107,8 +107,9 @@ func (c *Coder) 逆部首(s string) (rs []rune, n int) {
 	if lim > 32 {
 		lim = 32
 	}
+	// fmt.Println("逆部首: recv", s, "len", len(s), "lim", lim)
 	c.mu.RLock()
-	for i := 1; i < lim; i++ {
+	for i := 1; i <= lim; i++ {
 		l := c.逆部首缓存[s[:i]]
 		if len(l) > 0 {
 			rs = l
@@ -122,7 +123,7 @@ func (c *Coder) 逆部首(s string) (rs []rune, n int) {
 	x := &部首表{}
 	sb := strings.Builder{}
 	sb.WriteString("WHERE ")
-	for i := 1; i < lim; i++ {
+	for i := 1; i <= lim; i++ {
 		sb.WriteString("E='")
 		sb.WriteString(s[:i])
 		sb.WriteString("' OR ")
@@ -147,10 +148,11 @@ func (c *Coder) 逆部首(s string) (rs []rune, n int) {
 		c.逆部首缓存[e] = rs
 		return
 	}
-	for i := 1; i < lim; i++ {
+	for i := 1; i <= lim; i++ {
 		k := s[:i]
 		innerrs, ok := 逆部首后备[k]
 		c.逆部首缓存[k] = innerrs
+		// fmt.Println(k, innerrs)
 		if ok && len(innerrs) > 0 {
 			n = i
 			rs = innerrs

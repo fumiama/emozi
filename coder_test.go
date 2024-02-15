@@ -32,6 +32,14 @@ func TestEncode(t *testing.T) {
 	if len(lst) != 2 && lst[0] != 2 && lst[1] != 2 {
 		t.Fail()
 	}
+	es, lst, err = c.Encode(false, "的")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(es.String(), lst)
+	if es.String() != "的🈳🈳🈳" {
+		t.Fatal("got", es.String())
+	}
 }
 
 func TestDecode(t *testing.T) {
@@ -64,6 +72,29 @@ func TestDecode(t *testing.T) {
 	}
 	t.Log(ds)
 	if ds != "[你|儗]好，世[界|畍]！[指|抧|扺]定多音字：[銀|银]行行。" {
+		t.Fatal("got", ds)
+	}
+	es, lst, err = c.Encode(false, "好啊")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(es.String(), lst)
+	ds, err = c.Decode(es, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(ds)
+	if ds != "好啊" {
+		t.Fatal("got", ds)
+	}
+	es = EmoziString("🌹⁪😺‎🐴‫👩") // nolint: go-staticcheck
+	t.Log(es.String())
+	ds, err = c.Decode(es, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(ds)
+	if ds != "好" {
 		t.Fatal("got", ds)
 	}
 }

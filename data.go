@@ -37,6 +37,17 @@ type 字表 struct {
 	F  string
 }
 
+// CharGlobalID 计算全局唯一字表ID
+func CharGlobalID(w rune, f string) (int64, error) {
+	p := 去调(f)
+	s, y, err := 拆音(p)
+	if err != nil {
+		return 0, err
+	}
+	t := 识调(f)
+	return 字表ID(w, s, y, t), nil
+}
+
 func 字表ID(w rune, s 声母枚举, y 韵母枚举, t 声调枚举) int64 {
 	return int64((uint64(w) << 32) | (uint64(s) << 16) | (uint64(y) << 8) | (uint64(t)))
 }

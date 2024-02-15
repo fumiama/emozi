@@ -331,6 +331,5 @@ func SplitPinyin(pf string) (sm, ym, sd string, err error) {
 		return
 	}
 	t := 识调(pf)
-	println(s, y, t)
 	return s.String(), y.String(), t.String(), nil
 }
