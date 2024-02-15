@@ -132,7 +132,7 @@ func main() {
 		}
 		fmt.Println("已删除汉字ID:", *deloverlay)
 	}
-	if *addoverlay != "" {
+	if *addoverlay != "" && !*getglobalid {
 		r := []rune(*addoverlay)
 		if len(r) != 1 {
 			fmt.Println("ERROR: 非法汉字参数-a:", *addoverlay)
