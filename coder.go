@@ -13,15 +13,16 @@ import (
 
 // Coder encoder/decoder
 type Coder struct {
-	mu       sync.RWMutex
-	db       sql.Sqlite
-	字表缓存     map[rune][]字表
-	部首缓存     map[rune]string
-	isRandom bool
+	mu    sync.RWMutex
+	db    sql.Sqlite
+	字表缓存  map[rune][]字表
+	逆字表缓存 map[int64][]rune
+	部首缓存  map[rune]string
+	逆部首缓存 map[string][]rune
 }
 
 // NewCoder israndom 随机挑选声母韵母的颜文字, 否则固定使用第一个
-func NewCoder(israndom bool, cachettl time.Duration) (c Coder, err error) {
+func NewCoder(cachettl time.Duration) (c Coder, err error) {
 	if _, err = os.Stat(EmoziDatabasePath); err != nil {
 		err = os.WriteFile(EmoziDatabasePath, 字数据库, 0644)
 		if err != nil {
@@ -30,8 +31,9 @@ func NewCoder(israndom bool, cachettl time.Duration) (c Coder, err error) {
 	}
 	c.db.DBPath = EmoziDatabasePath
 	c.字表缓存 = make(map[rune][]字表, 4096)
+	c.逆字表缓存 = make(map[int64][]rune, 4096)
 	c.部首缓存 = make(map[rune]string, 4096)
-	c.isRandom = israndom
+	c.逆部首缓存 = make(map[string][]rune, 4096)
 	err = c.db.Open(cachettl)
 	if err != nil {
 		return
@@ -56,19 +58,23 @@ func NewCoder(israndom bool, cachettl time.Duration) (c Coder, err error) {
 func (c *Coder) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.字表缓存 = nil
+	c.逆字表缓存 = nil
+	c.部首缓存 = nil
+	c.逆部首缓存 = nil
 	return c.db.Close()
 }
 
 // Encode 从汉字序列生成 EmoziString 返回 EmoziString 多音字选择数列表
-func (c *Coder) Encode(s string, selections ...int) (EmoziString, []int, error) {
+func (c *Coder) Encode(enableRandom bool, s string, selections ...int) (EmoziString, []int, error) {
 	sb := strings.Builder{}
 	lstbuf := make([]字表, 0, len(s)/2)
 	var lst []字表
 	write := func(x *字表) {
-		sb.WriteString(c.查声母(x.S))
-		sb.WriteString(c.查韵母(x.Y))
-		sb.WriteString(c.查声调(x.T))
-		sb.WriteString(c.查部首(x.R))
+		sb.WriteString(c.声母(enableRandom, x.S))
+		sb.WriteString(c.韵母(enableRandom, x.Y))
+		sb.WriteString(c.声调(enableRandom, x.T))
+		sb.WriteString(c.部首(x.R))
 	}
 	多音字计数 := 0
 	多音字数表 := []int{}
@@ -102,6 +108,92 @@ func (c *Coder) Encode(s string, selections ...int) (EmoziString, []int, error) 
 		sb.WriteString("]")
 	}
 	return WrapRawEmoziString(sb.String()), 多音字数表, nil
+}
+
+// Decode 从 EmoziString 解码得到可能的文字序列
+func (c *Coder) Decode(es EmoziString, forcedecode bool) (string, error) {
+	if !es.IsValid() && !forcedecode {
+		return "", ErrInvalidEmoziString
+	}
+	s := ""
+	if forcedecode {
+		s = string(es)
+	} else {
+		s = es.String()
+	}
+	lstbuf := make([]字表, 0, len(s)/8)
+	read := func(s string) (string, int) {
+		sum := 0
+		sm, n := c.逆声母(s)
+		if n == 0 {
+			return "", 0
+		}
+		sum += n
+		ym, n := c.逆韵母(s[sum:])
+		if n == 0 {
+			return "", 0
+		}
+		sum += n
+		t, n := c.逆声调(s[sum:])
+		if n == 0 {
+			return "", 0
+		}
+		sum += n
+		rs, n := c.逆部首(s[sum:])
+		if n == 0 {
+			return "", 0
+		}
+		sum += n
+		var possibles []rune
+		var err error
+		if len(rs) == 0 { // 意符为空
+			possibles, lstbuf, err = c.逆字(sm, ym, t, 0, lstbuf)
+			if err != nil {
+				return "[]", sum
+			}
+		} else {
+			var revr []rune
+			for i := 0; i < len(rs); i++ {
+				revr, lstbuf, err = c.逆字(sm, ym, t, rs[i], lstbuf)
+				if err != nil || len(revr) == 0 {
+					continue
+				}
+				if len(possibles) == 0 {
+					possibles = revr
+				} else {
+					possibles = append(possibles, revr...)
+				}
+			}
+		}
+		if len(possibles) == 0 {
+			return "[]", sum
+		}
+		if len(possibles) == 1 {
+			return string(possibles[0]), sum
+		}
+		sb := strings.Builder{}
+		sb.WriteString("[")
+		sb.WriteRune(possibles[0])
+		for _, r := range possibles[1:] {
+			sb.WriteString("|")
+			sb.WriteRune(r)
+		}
+		sb.WriteString("]")
+		return sb.String(), sum
+	}
+	sb := strings.Builder{}
+	sum := 0
+	for sum < len(s) {
+		ch, n := read(s[sum:])
+		if n <= 0 {
+			sb.WriteByte(s[sum])
+			sum++
+			continue
+		}
+		sum += n
+		sb.WriteString(ch)
+	}
+	return sb.String(), nil
 }
 
 // AddChar 向主库添加一个新字

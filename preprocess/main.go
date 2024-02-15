@@ -29,7 +29,7 @@ func main() {
 		panic(fmt.Sprintf("ERROR: creating gocc: %v", err))
 	}
 	_ = os.RemoveAll(emozi.EmoziDatabasePath)
-	c, err := emozi.NewCoder(false, time.Minute)
+	c, err := emozi.NewCoder(time.Minute)
 	if err != nil {
 		panic(fmt.Sprintf("ERROR: creating emozi coder: %v", err))
 	}

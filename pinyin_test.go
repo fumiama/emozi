@@ -1,6 +1,18 @@
 package emozi
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestShengmuString(t *testing.T) {
+	for i := 0; i < len(声母); i++ {
+		t.Log(声母枚举(i).String())
+		if 声母枚举(i).String() != strings.TrimSpace(声母枚举(i).String()) {
+			t.Fatal("声母: '", 声母枚举(i), "'")
+		}
+	}
+}
 
 func TestSplitPinyin(t *testing.T) {
 	s, y, tone, err := SplitPinyin("yōng")

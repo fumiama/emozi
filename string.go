@@ -1,10 +1,15 @@
 package emozi
 
 import (
+	"errors"
 	"hash/crc32"
 	"strings"
 
 	base14 "github.com/fumiama/go-base16384"
+)
+
+var (
+	ErrInvalidEmoziString = errors.New("invalid EmoziString")
 )
 
 // EmoziString 一个颜文字汉字转写串, 包含串头 校验字节数*2 字节校验和
@@ -35,7 +40,7 @@ func WrapRawEmoziString(s string) EmoziString {
 // String 输出不包含串头的转写串
 func (es EmoziString) String() string {
 	if !es.IsValid() {
-		return "ERROR: invalid EmoziString"
+		return ErrInvalidEmoziString.Error()
 	}
 	rs := []rune(es)
 	sb := strings.Builder{}

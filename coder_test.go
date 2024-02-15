@@ -6,11 +6,11 @@ import (
 )
 
 func TestEncode(t *testing.T) {
-	c, err := NewCoder(false, time.Minute)
+	c, err := NewCoder(time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	es, lst, err := c.Encode("你好，世界！看看多音字：行。")
+	es, lst, err := c.Encode(false, "你好，世界！看看多音字：行。")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestEncode(t *testing.T) {
 	if len(lst) != 1 && lst[0] != 2 {
 		t.Fail()
 	}
-	es, lst, err = c.Encode("你好，世界！指定多音字：银行行。", 1, 0)
+	es, lst, err = c.Encode(false, "你好，世界！指定多音字：银行行。", 1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,5 +31,39 @@ func TestEncode(t *testing.T) {
 	}
 	if len(lst) != 2 && lst[0] != 2 && lst[1] != 2 {
 		t.Fail()
+	}
+}
+
+func TestDecode(t *testing.T) {
+	c, err := NewCoder(time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := "你好，世界！看看多音字：行。"
+	es, lst, err := c.Encode(false, s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(es.String(), lst)
+	ds, err := c.Decode(es, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(ds)
+	if ds != "[你|儗]好，世[界|畍]！看看多音字：[行|行]。" {
+		t.Fatal("got", ds)
+	}
+	es, lst, err = c.Encode(false, "你好，世界！指定多音字：银行行。", 1, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(es.String(), lst)
+	ds, err = c.Decode(es, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(ds)
+	if ds != "[你|儗]好，世[界|畍]！[指|抧|扺]定多音字：[銀|银]行行。" {
+		t.Fatal("got", ds)
 	}
 }
