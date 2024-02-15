@@ -132,4 +132,20 @@ func main() {
 		}
 		fmt.Println("已删除汉字ID:", *deloverlay)
 	}
+	if *addoverlay != "" {
+		r := []rune(*addoverlay)
+		if len(r) != 1 {
+			fmt.Println("ERROR: 非法汉字参数-a:", *addoverlay)
+			return
+		}
+		lst, err := coder.Lookup(r[0])
+		if err != nil {
+			fmt.Println("ERROR: coder.Lookup:", err)
+			return
+		}
+		fmt.Println("查询到汉字", *addoverlay, "的记录:")
+		for i, x := range lst {
+			fmt.Printf("%d)\t%s\n", i, x)
+		}
+	}
 }

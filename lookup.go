@@ -8,6 +8,19 @@ import (
 
 const 空 = '🈳'
 
+// Lookup 查一个汉字 (可能是多音字)
+func (c *Coder) Lookup(ch rune) (explains []string, err error) {
+	lst, _, err := c.查字(ch, make([]字表, 0, 8))
+	if err != nil || len(lst) == 0 {
+		return
+	}
+	explains = make([]string, len(lst))
+	for i, x := range lst {
+		explains[i] = x.String()
+	}
+	return
+}
+
 func 随机正查(m [][]string, isRandom bool, i uint8) string {
 	lst := m[i]
 	if len(lst) == 0 {
