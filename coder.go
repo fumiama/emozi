@@ -307,20 +307,20 @@ func (c *Coder) ChangeCharOverlay(oldw, oldr, oldf, neww, newr, newf string) (in
 }
 
 // StabilizeCharFromOverlay 将附加库中的一项固定到主库
-func (c *Coder) StabilizeCharFromOverlay(id int64) error {
+func (c *Coder) StabilizeCharFromOverlay(id int64) (string, error) {
 	x := 字表{}
 	q := "WHERE ID=" + strconv.FormatInt(id, 10)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	err := c.db.Find(附字表名, &x, q)
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = c.db.Insert(主字表名, &x)
 	if err != nil {
-		return err
+		return x.String(), err
 	}
-	return c.db.Del(附字表名, q)
+	return x.String(), c.db.Del(附字表名, q)
 }
 
 // DelChar 删除主库的一个字
@@ -337,15 +337,15 @@ func (c *Coder) DelCharOverlay(id int64) error {
 	return c.db.Del(附字表名, "WHERE ID="+strconv.FormatInt(id, 10))
 }
 
-// AddRadicalOverlay 添加一个部首
-func (c *Coder) AddRadicalOverlay(r rune, e string) error {
+// AddRadical 添加一个部首
+func (c *Coder) AddRadical(r rune, e string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.db.InsertUnique(部首表名, &部首表{R: r, E: e})
 }
 
-// DelRadicalOverlay 删除一个部首
-func (c *Coder) DelRadicalOverlay(r rune) error {
+// DelRadical 删除一个部首
+func (c *Coder) DelRadical(r rune) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.db.Del(部首表名, "WHERE R="+strconv.Itoa(int(r)))

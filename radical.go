@@ -237,7 +237,7 @@ var 部首后备 = map[rune]string{
 	'貝': string(空),
 	'邑': string(空),
 	'𨛜': string(空),
-	'日': string(空),
+	'日': "🌞",
 	'旦': string(空),
 	'倝': string(空),
 	'㫃': string(空),

@@ -37,6 +37,25 @@ type 字表 struct {
 	F  string
 }
 
+func (z *字表) String() string {
+	sb := strings.Builder{}
+	sb.WriteString("#")
+	sb.WriteString(strconv.FormatInt(z.ID, 10))
+	sb.WriteByte(' ')
+	sb.WriteRune(z.W)
+	sb.WriteString(" [")
+	sb.WriteString(z.S.String())
+	sb.WriteString(z.Y.String())
+	sb.WriteString(z.T.String())
+	sb.WriteString("] 从")
+	sb.WriteRune(z.R)
+	sb.WriteByte(' ')
+	sb.WriteString(z.P)
+	sb.WriteByte(' ')
+	sb.WriteString(z.F)
+	return sb.String()
+}
+
 // CharGlobalID 计算全局唯一字表ID
 func CharGlobalID(w rune, f string) (int64, error) {
 	p := 去调(f)
