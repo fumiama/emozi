@@ -109,13 +109,12 @@ func (c *Coder) 查字(ch rune, lstbuf []字表) ([]字表, []字表, error) {
 		lstbuf = append(lstbuf, x)
 		return nil
 	})
-	if err != nil {
-		c.字表缓存[ch] = nil
-		return nil, lstbuf, err
-	}
 	if len(lstbuf) == 0 {
 		c.字表缓存[ch] = nil
-		return nil, lstbuf, ErrNoSuchChar
+		if err == nil {
+			err = ErrNoSuchChar
+		}
+		return nil, lstbuf, err
 	}
 	lstsave := make([]字表, len(lstbuf))
 	copy(lstsave, lstbuf)
