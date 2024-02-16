@@ -10,6 +10,7 @@ func TestEncode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c.Close()
 	es, lst, err := c.Encode(false, "你好，世界！看看多音字：行。")
 	if err != nil {
 		t.Fatal(err)
@@ -30,11 +31,11 @@ func TestEncode(t *testing.T) {
 	if len(lst) != 2 && lst[0] != 2 && lst[1] != 2 {
 		t.Fail()
 	}
-	es, _, err = c.Encode(false, "的")
+	es, _, err = c.Encode(false, "嗯")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if es.String() != "的🈳🈳🈳" {
+	if es.String() != "嗯🈳🈳🈳" {
 		t.Fatal("got", es.String())
 	}
 }
@@ -44,6 +45,7 @@ func TestDecode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c.Close()
 	s := "你好，世界！看看多音字：行。"
 	es, _, err := c.Encode(false, s)
 	if err != nil {

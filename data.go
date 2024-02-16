@@ -50,15 +50,23 @@ func (z *字表) String() string {
 	sb.WriteByte(' ')
 	sb.WriteRune(z.W)
 	sb.WriteString(" [")
-	sb.WriteString(z.S.String())
-	sb.WriteString(z.Y.String())
-	sb.WriteString(z.T.String())
+	sb.WriteString(z.读音())
 	sb.WriteString("] 从")
 	sb.WriteRune(z.R)
 	sb.WriteByte(' ')
 	sb.WriteString(z.P)
 	sb.WriteByte(' ')
 	sb.WriteString(z.F)
+	return sb.String()
+}
+
+func (z *字表) 读音() string {
+	sb := strings.Builder{}
+	sb.WriteString(z.S.String())
+	sb.WriteString(", ")
+	sb.WriteString(z.Y.String())
+	sb.WriteString(", ")
+	sb.WriteString(z.T.String())
 	return sb.String()
 }
 
@@ -177,28 +185,39 @@ func (c *Coder) 逆字(s 声母枚举, y 韵母枚举, t 声调枚举, r rune, l
 	return rs, lstbuf, nil
 }
 
-// AddChar 向主库添加一个新字
-//
-// w: 字, r: 部首, p: 不带声调的拼音(可空), f: 带声调的拼音
-func (c *Coder) AddChar(w, r, p, f string) error {
+func (c *Coder) 添加字到表(table, w, r, p, f string) (int64, string, error) {
 	if p == "" {
 		p = 去调(f)
 	}
 	s, y, t, rw, rr, err := 拆音识字(w, r, p, f)
 	if err != nil {
-		return err
+		return 0, "", err
 	}
-	c.mu.Lock()
-	err = c.db.InsertUnique(主字表名, &字表{
-		ID: 字表ID(rw, s, y, t),
+	id := 字表ID(rw, s, y, t)
+	revid := 逆字ID(s, y, t, rr)
+	x := &字表{
+		ID: id,
 		W:  rw, S: s, Y: y, T: t,
 		R: rr, P: p, F: f,
-	})
+	}
+	c.mu.Lock()
+	err = c.db.InsertUnique(table, x)
+	if err == nil {
+		c.字表缓存[rw] = append(c.字表缓存[rw], *x)
+		c.逆字表缓存[revid] = append(c.逆字表缓存[revid], rw)
+	}
 	c.mu.Unlock()
 	if err != nil {
-		return errors.New("已有同音同形的字 '" + w + "'")
+		return 0, "", errors.New("已有同音同形的字 '" + w + "'")
 	}
-	return nil
+	return id, x.读音(), nil
+}
+
+// AddChar 向主库添加一个新字
+//
+// w: 字, r: 部首, p: 不带声调的拼音(可空), f: 带声调的拼音
+func (c *Coder) AddChar(w, r, p, f string) (int64, string, error) {
+	return c.添加字到表(主字表名, w, r, p, f)
 }
 
 // AddCharOverlay 向附加库添加一个新字, 覆盖在主库之上
@@ -206,66 +225,7 @@ func (c *Coder) AddChar(w, r, p, f string) error {
 // w: 字, r: 部首, p: 不带声调的拼音(可空), f: 带声调的拼音
 // 返回: 字表ID, 文字描述, error
 func (c *Coder) AddCharOverlay(w, r, p, f string) (int64, string, error) {
-	if p == "" {
-		p = 去调(f)
-	}
-	s, y, t, rw, rr, err := 拆音识字(w, r, p, f)
-	if err != nil {
-		return 0, "", err
-	}
-	return c.addcharoverlay(w, p, f, s, y, t, rw, rr)
-}
-
-func (c *Coder) addcharoverlay(w, p, f string, s 声母枚举, y 韵母枚举, t 声调枚举, rw rune, rr rune) (int64, string, error) {
-	id := 字表ID(rw, s, y, t)
-	c.mu.Lock()
-	err := c.db.InsertUnique(附字表名, &字表{
-		ID: id,
-		W:  rw, S: s, Y: y, T: t,
-		R: rr, P: p, F: f,
-	})
-	c.mu.Unlock()
-	if err != nil {
-		return 0, "", errors.New("已有同音同形的字 '" + w + "'")
-	}
-	sb := strings.Builder{}
-	sb.WriteString(s.String())
-	sb.WriteString(", ")
-	sb.WriteString(y.String())
-	sb.WriteString(", ")
-	sb.WriteString(t.String())
-	return id, sb.String(), nil
-}
-
-// ChangeCharOverlay 更改附加库的一项
-func (c *Coder) ChangeCharOverlay(oldw, oldr, oldf, neww, newr, newf string) (int64, string, error) {
-	s, y, t, rw, rr, err := 拆音识字(oldw, oldr, 去调(oldf), oldf)
-	if err != nil {
-		return 0, "", err
-	}
-	newp := 去调(newf)
-	ns, ny, nt, nrw, nrr, err := 拆音识字(neww, newr, newp, newf)
-	if err != nil {
-		return 0, "", err
-	}
-	q := "WHERE ID=" + strconv.FormatInt(字表ID(rw, s, y, t), 10)
-	x := 字表{}
-	c.mu.RLock()
-	err = c.db.Find(附字表名, &x, q)
-	c.mu.RUnlock()
-	if err != nil {
-		return 0, "", err
-	}
-	if x.R != rr {
-		return 0, "", errors.New("提供的旧部首 '" + string(rr) + "' 与记载的 '" + string(x.R) + "' 不符")
-	}
-	c.mu.Lock()
-	err = c.db.Del(附字表名, q)
-	c.mu.Unlock()
-	if err != nil {
-		return 0, "", err
-	}
-	return c.addcharoverlay(neww, newp, newf, ns, ny, nt, nrw, nrr)
+	return c.添加字到表(附字表名, w, r, p, f)
 }
 
 // StabilizeCharFromOverlay 将附加库中的一项固定到主库
@@ -285,30 +245,97 @@ func (c *Coder) StabilizeCharFromOverlay(id int64) (string, error) {
 	return x.String(), c.db.Del(附字表名, q)
 }
 
-// DelChar 删除主库的一个字
-func (c *Coder) DelChar(id int64) error {
+// 清除缓存字 未加锁, 必须在写锁内调用
+func (c *Coder) 清除缓存字(x *字表) {
+	for i, ch := range c.字表缓存[x.W] {
+		if ch.ID == x.ID {
+			switch {
+			case i == 0:
+				c.字表缓存[x.W] = c.字表缓存[x.W][1:]
+			case i == len(c.字表缓存[x.W])-1:
+				c.字表缓存[x.W] = c.字表缓存[x.W][:i-1]
+			default:
+				c.字表缓存[x.W] = append(c.字表缓存[x.W][:i], c.字表缓存[x.W][i+1:]...)
+			}
+			break
+		}
+	}
+	revid := 逆字ID(x.S, x.Y, x.T, x.R)
+	for i, ch := range c.逆字表缓存[revid] {
+		if ch == x.W {
+			switch {
+			case i == 0:
+				c.逆字表缓存[revid] = c.逆字表缓存[revid][1:]
+			case i == len(c.逆字表缓存[revid])-1:
+				c.逆字表缓存[revid] = c.逆字表缓存[revid][:i-1]
+			default:
+				c.逆字表缓存[revid] = append(c.逆字表缓存[revid][:i], c.逆字表缓存[revid][i+1:]...)
+			}
+			break
+		}
+	}
+}
+
+func (c *Coder) 删除表中字(table string, id int64) error {
+	q := "WHERE ID=" + strconv.FormatInt(id, 10)
+	x := 字表{}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.db.Del(主字表名, "WHERE ID="+strconv.FormatInt(id, 10))
+	err := c.db.Find(table, &x, q)
+	if err != nil {
+		return err
+	}
+	c.清除缓存字(&x)
+	return c.db.Del(table, q)
+}
+
+// DelChar 删除主库的一个字
+func (c *Coder) DelChar(id int64) error {
+	return c.删除表中字(主字表名, id)
 }
 
 // DelCharOverlay 删除附加库的一个字
 func (c *Coder) DelCharOverlay(id int64) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.db.Del(附字表名, "WHERE ID="+strconv.FormatInt(id, 10))
+	return c.删除表中字(附字表名, id)
 }
 
 // AddRadical 添加一个部首
 func (c *Coder) AddRadical(r rune, e string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.db.InsertUnique(部首表名, &部首表{R: r, E: e})
+	err := c.db.InsertUnique(部首表名, &部首表{R: r, E: e})
+	if err == nil {
+		c.部首缓存[r] = e
+		if 无此字符(c.逆部首缓存[e], r) {
+			c.逆部首缓存[e] = append(c.逆部首缓存[e], r)
+		}
+	}
+	return err
 }
 
 // DelRadical 删除一个部首
 func (c *Coder) DelRadical(r rune) error {
+	x := 部首表{}
+	q := "WHERE R=" + strconv.Itoa(int(r))
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.db.Del(部首表名, "WHERE R="+strconv.Itoa(int(r)))
+	err := c.db.Find(部首表名, &x, q)
+	if err != nil {
+		return err
+	}
+	delete(c.部首缓存, r)
+	for i, item := range c.逆部首缓存[x.E] {
+		if item == r {
+			switch {
+			case i == 0:
+				c.逆部首缓存[x.E] = c.逆部首缓存[x.E][1:]
+			case i == len(c.逆部首缓存[x.E])-1:
+				c.逆部首缓存[x.E] = c.逆部首缓存[x.E][:i-1]
+			default:
+				c.逆部首缓存[x.E] = append(c.逆部首缓存[x.E][:i], c.逆部首缓存[x.E][i+1:]...)
+			}
+			break
+		}
+	}
+	return c.db.Del(部首表名, q)
 }
