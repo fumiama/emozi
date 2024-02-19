@@ -8,8 +8,8 @@ import (
 
 const 空 = '🈳'
 
-// Lookup 查一个汉字 (可能是多音字)
-func (c *Coder) Lookup(ch rune) (explains []string, err error) {
+// LookupChar 查一个汉字 (可能是多音字)
+func (c *Coder) LookupChar(ch rune) (explains []string, err error) {
 	lst, _, err := c.查字(ch, make([]字表, 0, 8))
 	if err != nil || len(lst) == 0 {
 		return
@@ -18,6 +18,31 @@ func (c *Coder) Lookup(ch rune) (explains []string, err error) {
 	for i, x := range lst {
 		explains[i] = x.String()
 	}
+	return
+}
+
+// LookupRadical 查一个部首
+func (c *Coder) LookupRadical(r rune) string {
+	return c.部首(r)
+}
+
+// GetCharByID ...
+func (c *Coder) GetCharByID(id int64) (w, r rune, p, f string, err error) {
+	x := 字表{}
+	q := "WHERE ID=" + strconv.FormatInt(id, 10)
+	c.mu.RLock()
+	err = c.db.Find(附字表名, &x, q)
+	if err != nil {
+		err = c.db.Find(主字表名, &x, q)
+	}
+	c.mu.RUnlock()
+	if err != nil {
+		return
+	}
+	w = x.W
+	r = x.R
+	p = x.P
+	f = x.F
 	return
 }
 

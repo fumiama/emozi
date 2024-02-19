@@ -138,7 +138,7 @@ func main() {
 			fmt.Println("ERROR: 非法汉字参数-a:", *addoverlay)
 			return
 		}
-		lst, err := coder.Lookup(r[0])
+		lst, err := coder.LookupChar(r[0])
 		if err != nil {
 			fmt.Println("ERROR: coder.Lookup:", err)
 			return
