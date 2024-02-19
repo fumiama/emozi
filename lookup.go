@@ -27,7 +27,7 @@ func (c *Coder) LookupRadical(r rune) string {
 }
 
 // GetCharByID ...
-func (c *Coder) GetCharByID(id int64) (w, r rune, p, f string, err error) {
+func (c *Coder) GetCharByID(id int64) (w, r rune, p, f, desc string, err error) {
 	x := 字表{}
 	q := "WHERE ID=" + strconv.FormatInt(id, 10)
 	c.mu.RLock()
@@ -43,6 +43,7 @@ func (c *Coder) GetCharByID(id int64) (w, r rune, p, f string, err error) {
 	r = x.R
 	p = x.P
 	f = x.F
+	desc = x.String()
 	return
 }
 
