@@ -212,7 +212,7 @@ var 部首后备 = map[rune]string{
 	'夂': string(空),
 	'久': string(空),
 	'桀': string(空),
-	'木': string(空),
+	'木': "🪵",
 	'東': string(空),
 	'林': string(空),
 	'才': string(空),
