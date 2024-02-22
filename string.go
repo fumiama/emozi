@@ -21,7 +21,7 @@ func WrapRawEmoziString(s string) EmoziString {
 	if len(rs) < 4 {
 		diff := 4 - len(rs)
 		for i := 0; i < diff; i++ {
-			rs = append(rs, 空)
+			rs = append(rs, EmptyMark)
 		}
 		s = string(rs)
 	}

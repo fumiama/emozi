@@ -91,7 +91,7 @@ func main() {
 			fmt.Println("ERROR: coder.AddRadical:", err)
 			return
 		}
-		fmt.Println("已添加部首:", *radical, "颜文字:", *radicalemozi)
+		fmt.Println("已添加部首:", *radical, "颜文字:", coder.LookupRadical(rr[0]))
 	}
 	if *getglobalid && *addoverlay != "" && *pinyinfull != "" {
 		sm, ym, sd, err := emozi.SplitPinyin(*pinyinfull)

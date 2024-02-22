@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-const 空 = '🈳'
+// EmptyMark 代表 "空" 的颜文字
+const EmptyMark = '🈳'
 
 // LookupChar 查一个汉字 (可能是多音字)
 func (c *Coder) LookupChar(ch rune) (explains []string, err error) {
@@ -50,7 +51,7 @@ func (c *Coder) GetCharByID(id int64) (w, r rune, p, f, desc string, err error) 
 func 随机正查(m [][]string, isRandom bool, i uint8) string {
 	lst := m[i]
 	if len(lst) == 0 {
-		return string(空)
+		return string(EmptyMark)
 	}
 	if len(lst) == 1 || !isRandom {
 		return lst[0]
@@ -81,7 +82,7 @@ func (c *Coder) 部首(r rune) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	err := c.db.Find(部首表名, x, "WHERE R="+strconv.Itoa(int(r)))
-	if err == nil && len(x.E) > 0 && x.E != string(空) {
+	if err == nil && len(x.E) > 0 && x.E != string(EmptyMark) {
 		c.部首缓存[r] = x.E
 		return x.E
 	}
@@ -89,8 +90,8 @@ func (c *Coder) 部首(r rune) string {
 		c.部首缓存[r] = e
 		return e
 	}
-	c.部首缓存[r] = string(空)
-	return string(空)
+	c.部首缓存[r] = string(EmptyMark)
+	return string(EmptyMark)
 }
 
 func 二阶逆查[E ~uint8](lowm map[rune][]string, m map[string]E, s string) (enum E, n int) {
